@@ -86,8 +86,8 @@ class ViewController: UIViewController, NSURLConnectionDataDelegate{
     
     func connectionDidFinishLoading(connection: NSURLConnection) {
         if responseData != nil{
-            var error:NSError?
-            if let result = NSJSONSerialization.JSONObjectWithData(responseData!, options: nil, error: &error) as? NSDictionary{
+            do{
+                let result = try NSJSONSerialization.JSONObjectWithData(responseData!, options: NSJSONReadingOptions.MutableContainers) as! NSDictionary
                 let status = result["status"] as? String
                 if status == "OK"{
                     if let predictions = result["predictions"] as? NSArray{
@@ -101,24 +101,28 @@ class ViewController: UIViewController, NSURLConnectionDataDelegate{
                 else{
                     self.autocompleteTextfield.autoCompleteStrings = nil
                 }
+                
+            }
+            catch{
+                print("Error")
             }
         }
     }
     
     func connection(connection: NSURLConnection, didFailWithError error: NSError) {
-        println("Error: \(error.localizedDescription)")
+        print("Error: \(error.localizedDescription)")
     }
     
     //MARK: Map Utilities
     private func addAnnotation(coordinate:CLLocationCoordinate2D, address:String?){
         if selectedPointAnnotation != nil{
-            mapView.removeAnnotation(selectedPointAnnotation)
+            mapView.removeAnnotation(selectedPointAnnotation!)
         }
         
         selectedPointAnnotation = MKPointAnnotation()
         selectedPointAnnotation?.coordinate = coordinate
         selectedPointAnnotation?.title = address
-        mapView.addAnnotation(selectedPointAnnotation)
+        mapView.addAnnotation(selectedPointAnnotation!)
     }
 }
 
