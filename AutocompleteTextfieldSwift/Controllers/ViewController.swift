@@ -41,6 +41,7 @@ class ViewController: UIViewController, NSURLConnectionDataDelegate{
         autocompleteTextfield.hidesWhenSelected = true
         autocompleteTextfield.hidesWhenEmpty = true
         autocompleteTextfield.enableAttributedText = true
+        autocompleteTextfield.autoCompleteTableHeight = 200.0
         var attributes = [String:AnyObject]()
         attributes[NSForegroundColorAttributeName] = UIColor.blackColor()
         attributes[NSFontAttributeName] = UIFont(name: "HelveticaNeue-Bold", size: 12.0)
