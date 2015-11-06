@@ -26,20 +26,27 @@ public class AutoCompleteTextField:UITextField, UITableViewDataSource, UITableVi
     /// Used to set the height of cell for each suggestions
     public var autoCompleteCellHeight:CGFloat = 44.0
     /// The maximum visible suggestion
-    public var maximumAutoCompleteCount = 3
+    public var maximumAutoCompleteCount = 200
     /// Used to set your own preferred separator inset
     public var autoCompleteSeparatorInset = UIEdgeInsetsZero
     /// Shows autocomplete text with formatting
-    public var enableAttributedText = false
+    public var enableAttributedText = true
     /// User Defined Attributes
     public var autoCompleteAttributes:[String:AnyObject]?
     // Hides autocomplete tableview after selecting a suggestion
     public var hidesWhenSelected = true
+    // fill screen width
+    public var fillScreenWidth = true
     /// Hides autocomplete tableview when the textfield is empty
     public var hidesWhenEmpty:Bool?{
         didSet{
             assert(hidesWhenEmpty != nil, "hideWhenEmpty cannot be set to nil")
             autoCompleteTableView?.hidden = hidesWhenEmpty!
+        }
+    }
+    public var autoCompletePresentationView: UIView? {
+        didSet {
+            setupAutocompleteTable()
         }
     }
     /// The table view height
@@ -50,34 +57,30 @@ public class AutoCompleteTextField:UITextField, UITableViewDataSource, UITableVi
     }
     /// The strings to be shown on as suggestions, setting the value of this automatically reload the tableview
     public var autoCompleteStrings:[String]?{
-        didSet{ reload() }
+        didSet{
+            print("results: \(autoCompleteStrings)")
+            reload()
+        }
     }
-    
     
     //MARK: - Init
     override init(frame: CGRect) {
         super.init(frame: frame)
         commonInit()
-        setupAutocompleteTable(superview!)
     }
     
     required public init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
+        commonInit()
     }
     
     public override func awakeFromNib() {
         super.awakeFromNib()
         commonInit()
-        setupAutocompleteTable(superview!)
-    }
-    
-    public override func willMoveToSuperview(newSuperview: UIView?) {
-        super.willMoveToSuperview(newSuperview)
-        commonInit()
-        setupAutocompleteTable(newSuperview!)
     }
     
     private func commonInit(){
+        print("COMMON INIT")
         hidesWhenEmpty = true
         autoCompleteAttributes = [NSForegroundColorAttributeName:UIColor.blackColor()]
         autoCompleteAttributes![NSFontAttributeName] = UIFont(name: "HelveticaNeue-Bold", size: 12)
@@ -85,17 +88,31 @@ public class AutoCompleteTextField:UITextField, UITableViewDataSource, UITableVi
         self.addTarget(self, action: "textFieldDidChange", forControlEvents: .EditingChanged)
     }
     
-    private func setupAutocompleteTable(view:UIView){
+    private func setupAutocompleteTable(){
+        if (self.superview != nil) {
+            let view = self.autoCompletePresentationView ?? self.superview!
+            self.autoCompleteTableView?.removeFromSuperview()
+            let tableView = UITableView(frame: createTableViewFrame())
+            tableView.dataSource = self
+            tableView.delegate = self
+            tableView.rowHeight = autoCompleteCellHeight
+            tableView.hidden = hidesWhenEmpty ?? true
+            view.addSubview(tableView)
+            autoCompleteTableView = tableView
+            autoCompleteTableHeight = 100.0
+        }
+    }
+    
+    private func createTableViewFrame() -> CGRect {
+        let view = self.autoCompletePresentationView ?? self.superview!
         let screenSize = UIScreen.mainScreen().bounds.size
-        let tableView = UITableView(frame: CGRectMake(self.frame.origin.x, self.frame.origin.y + CGRectGetHeight(self.frame), screenSize.width - (self.frame.origin.x * 2), 30.0))
-        tableView.dataSource = self
-        tableView.delegate = self
-        tableView.rowHeight = autoCompleteCellHeight
-        tableView.hidden = hidesWhenEmpty ?? true
-        view.addSubview(tableView)
-        autoCompleteTableView = tableView
-        
-        autoCompleteTableHeight = 100.0
+        let theFrame = view.convertRect(self.frame, fromView: self.superview!)
+        let tableViewFrame = CGRectMake(
+            fillScreenWidth ? 0 : theFrame.origin.x,
+            theFrame.origin.y + theFrame.size.height,
+            fillScreenWidth ? screenSize.width : screenSize.width - (theFrame.origin.x * 2),
+            30.0)
+        return tableViewFrame
     }
     
     private func redrawTable(){
@@ -178,12 +195,26 @@ public class AutoCompleteTextField:UITextField, UITableViewDataSource, UITableVi
         autoCompleteTableView?.reloadData()
     }
     
+    func showOrHideTableView() {
+        let hidden = self.hidesWhenEmpty! ? self.text!.isEmpty : false
+        if (!hidden && autoCompleteTableView == nil) {
+            self.setupAutocompleteTable()
+        }
+        self.autoCompleteTableView?.frame = createTableViewFrame()
+        self.autoCompleteTableView?.hidden = hidden
+        if (!hidden) {
+            redrawTable()
+        }
+    }
+    
     //MARK: - Internal
     func textFieldDidChange(){
         onTextChange(text!)
-        if text!.isEmpty{ autoCompleteStrings = nil }
+        if text!.isEmpty {
+            autoCompleteStrings = nil
+        }
         dispatch_async(dispatch_get_main_queue(), { () -> Void in
-            self.autoCompleteTableView?.hidden =  self.hidesWhenEmpty! ? self.text!.isEmpty : false
+            self.showOrHideTableView()
         })
     }
 }
